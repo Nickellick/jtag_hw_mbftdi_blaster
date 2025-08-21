@@ -573,7 +573,7 @@ FT_STATUS ftdi_blaster::resetDevice()
 	ftStatus |= g_pSetChars(ftHandle_, false, 0, false, 0);
 
 	//Sets the read and write timeouts in milliseconds
-	ftStatus |= g_pSetTimeouts(ftHandle_, 0, 5000);
+	ftStatus |= g_pSetTimeouts(ftHandle_, READ_TIMEOUT_MS, WRITE_TIMEOUT_MS);
 
 	//Set the latency timer (default is 16mS)
 	ftStatus |= g_pSetLatencyTimer(ftHandle_, 16);
@@ -638,21 +638,28 @@ FT_STATUS ftStatus;
 // the bogus opcode itself.
 // -----------------------------------------------------------
 // Reset output buffer pointer
-dwNumBytesToSend=0;
-//Add bogus command ‘xAA’ to the queue
+g_pPurge(ftHandle_, FT_PURGE_RX | FT_PURGE_TX);
+
+dwNumBytesToSend = 0;
+
+//Add bogus command 0xAA to the queue
 byOutputBuffer[dwNumBytesToSend++] = 0xAA;
-// Send off the BAD commands
 ftStatus = g_pWrite(ftHandle_, byOutputBuffer, dwNumBytesToSend, &dwNumBytesSent);
-do
-{
-	// Get the number of bytes in the device input buffer
-	ftStatus = g_pGetQueueStatus(ftHandle_, &dwNumBytesToRead);
-} while ((dwNumBytesToRead == 0) && (ftStatus == FT_OK));
 
-//Read out the data from input buffer
-ftStatus = g_pRead(ftHandle_, &byInputBuffer, dwNumBytesToRead, &dwNumBytesRead);
+// Wait for response with timeout
+int waited = 0;
+do {
+    ftStatus = g_pGetQueueStatus(ftHandle_, &dwNumBytesToRead);
+    if (ftStatus != FT_OK) break;
+    if (dwNumBytesToRead >= 0) break;
+    do_sleep(5);
+    waited += 5;
+} while (waited < READ_TIMEOUT_MS);
 
-//Check if Bad command and echo command received
+dwNumBytesRead = 0;
+ftStatus = g_pRead(ftHandle_, &byInputBuffer, sizeof(byInputBuffer), &dwNumBytesRead);
+
+// Looking for signature 0xFA 0xAA
 bCommandEchod = false;
 for (dwCount = 0; dwCount < dwNumBytesRead - 1; dwCount++)
 {

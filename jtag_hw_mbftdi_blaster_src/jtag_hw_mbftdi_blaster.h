@@ -8,7 +8,7 @@
 using namespace std;
 
 /* define JTAG programmer properties */
-#define PROGRAMER_NAME "MBFTDI-Blaster v2.1b"
+#define PROGRAMER_NAME "MBFTDI-Blaster v2.2b"
 
 //select neccessary channels A or B or both
 #define USE_CHANNEL_A 1
@@ -46,6 +46,12 @@ using namespace std;
 #define BLK_SIZE 16 
 #define BUF_SIZE (1024*1024*16)
 #define RW_BUF_SIZE (1024*128)
+
+//-----------------------------
+//MBFTDI related definitions, vars
+//-----------------------------
+#define READ_TIMEOUT_MS 5000
+#define WRITE_TIMEOUT_MS 5000
 
 class ftdi_blaster : public jblaster {
 public:
